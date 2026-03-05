@@ -1,0 +1,49 @@
+require('dotenv').config();
+const express = require('express');
+const nodemailer = require('nodemailer');
+const bodyParser = require('body-parser');
+
+const app = express();
+app.use(bodyParser.json());
+
+// CORS if needed
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*'); // adjust for your domain later
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
+
+// Nodemailer transporter using Gmail
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+});
+
+// Endpoint to receive dealer order
+app.post('/send-order', async (req, res) => {
+  const { body } = req.body; // we will send email body from front-end
+
+  if (!body) return res.status(400).json({ message: 'No order data provided' });
+
+  try {
+    await transporter.sendMail({
+      from: `"Hydralift Dealer Orders" <${process.env.EMAIL_USER}>`,
+      to: process.env.EMAIL_TO,
+      subject: process.env.EMAIL_SUBJECT,
+      text: body,
+    });
+
+    return res.json({ success: true, message: 'Order sent successfully' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: 'Error sending email' });
+  }
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Dealer Order Emailer running on port ${PORT}`));
